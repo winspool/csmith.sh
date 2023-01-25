@@ -50,13 +50,13 @@
 
 ## More details
 
- Testfiles are created in a subdirectory of XDG_RUNTIME_DIR (which is normally a RAM-Disc, based on tmpfs). </br>
- This is much faster and avoids write pressure on a physical disc (probably a flask disc).
+ Testfiles are created in a subdirectory of XDG_RUNTIME_DIR (which is normally a RAM-disc, based on tmpfs). </br>
+ This is much faster and avoids write pressure on a physical disc (probably a flash disc).
 
  When building or running a test binary or comparing the result fails, </br>
  additional shell scripts are created, which can be used for "creduce" as "interestingness_test"
 
- To avoid to fill up the disk, all files for the current seed value are deleted, </br>
+ To avoid to fill up the disc, all files for the current seed value are deleted, </br>
  when both compile variants work and running the created programs produced the same result.
 
  The output of this script is compatible to TAP: Test Anything Protocol

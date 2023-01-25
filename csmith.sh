@@ -109,7 +109,7 @@ def_libm="-lm"
 def_warn="-w "
 # owcc needs "-Wlevel=0 " to disable warnings
 #def_warn="-Wlevel=0 "
-# zig cc enables ub-santanizer by default
+# zig cc enables ub-sanitizer by default
 #def_warn="-w -fno-sanitize=undefined"
 ##
 
