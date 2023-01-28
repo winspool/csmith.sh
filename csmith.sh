@@ -31,9 +31,10 @@
 ## TESTCCFLAGS    extra flags for the c compiler to test  [ \$CCFLAGS ]
 ## TESTCXXFLAGS   extra flags for the c++ compiler to test  [ \$CXXFLAGS ]
 ##
-## The scriptname can be used to define a reference compiler and related flags
+## The scriptname can be used to define the std mode, a reference compiler and related flags
+## In the first part (upto the first dot), the underscore can be used to select the std.
 ## After the ".sh" extension was stripped, more dots are used to split additional options
-## Examples: csmith.tcc.sh or csmith.gcc.-strict.sh
+## Examples: csmith.tcc.sh or csmith_c11.gcc.-strict.sh
 ##
 ## Testfiles are created in a subdirectory of XDG_RUNTIME_DIR
 ## (which is normally a RAM-Disc, based on tmpfs).
@@ -76,13 +77,12 @@ id_first="0"
 id_last="1000"
 
 
-## use CC or CXX for c_or_cxx
-c_or_cxx=""
+# "c99" for "-std=c99", "c11" for -std="c11"
+# "c++03" for "-std=c++03", "c++11" for "-std=c++11"
+def_stdc="c99"
+def_cplusplus="c++03"
+def_std="$def_stdc"
 
-# "99" for "-std=c99"
-stdc="99"
-# "03" for "-std=c++03", "11" for "-std=c++11"
-cplusplus="03"
 #file extension for c++ files
 cxxext=".cpp"
 
@@ -113,8 +113,6 @@ def_warn="-w "
 #def_warn="-w -fno-sanitize=undefined"
 ##
 
-## select a default mode: c_or_cxx
-def_c_or_cxx="CC"
 def_refcc="gcc"
 def_refcxx="g++"
 
@@ -125,6 +123,12 @@ def_timeout="8"
 # all configuration options are above #
 #######################################
 
+csmith_set_std=""
+compiler_set_std=""
+
+## use c or c++ for c_or_cxx
+c_or_cxx=""
+std_version=""
 
 # count success / failures
 test_id=0
@@ -150,43 +154,54 @@ echo "# toolflags:   $toolflags"
 echo "# with csmith: $CSMITH_BIN"
 fi
 
+
+# try to detect the standard to use from the scriptname
+try_as_std="`echo "$shortname" | cut -d "_" -f2`"
+if [ "$try_as_std" = "$shortname" ]
+then
+    try_as_std=""
+else
+    c_or_cxx="`echo "$try_as_std" | tr -d "0123456789"`"
+    std_version="`echo "$try_as_std" | tr -d "+[a-z]"`"
+fi
+
+
 ## try to detect our language mode from the environment: c or c++
 if [ -z "$c_or_cxx" ]
 then
     if [ -n "$REFCC" ] 
     then
-        c_or_cxx="CC"
+        c_or_cxx="c"
         REFCXX=""
         REFCXXFLAGS=""
     fi
     if [ -n "$REFCXX" ] 
     then
-        c_or_cxx="CXX"
+        c_or_cxx="c++"
         REFCC=""
         REFCCFLAGS=""
     fi
 
     if [ -n "$TESTCC" ] 
     then
-        c_or_cxx="CC"
+        c_or_cxx="c"
         TESTCXX=""
         TESTCXXFLAGS=""
     fi
 
     if [ -n "$TESTCXX" ] 
     then
-        c_or_cxx="CXX"
+        c_or_cxx="c++"
         TESTCC=""
         TESTCCFLAGS=""
     fi
 fi
 
-
 if [ -z "$c_or_cxx" ]
 then
     if [ -n "$CC" ] 
     then
-        c_or_cxx="CC"
+        c_or_cxx="c"
     fi
 fi
 
@@ -194,26 +209,50 @@ if [ -z "$c_or_cxx" ]
 then
     if [ -n "$CXX" ] 
     then
-    c_or_cxx="CXX"
+    c_or_cxx="c++"
     fi
 fi
 
-
 if [ -z "$c_or_cxx" ]
 then
-    c_or_cxx="$def_c_or_cxx"
+    try_as_std="$def_std"
+    c_or_cxx="`echo "$try_as_std" | tr -d "[0-9]"`"
+    std_version="`echo "$try_as_std" | tr -d "+[a-z]"`"
 fi
 
-## We have now a language mode: c ("CC") or c++ (anything else)
+###
+# when we do not have a std version, use out default
+if [ -z "$std_version" ]
+then
+    if [ "$c_or_cxx" = "c" ]
+    then
+        try_as_std="$def_stdc"
+    else
+        try_as_std="$def_cplusplus"
+    fi
+    c_or_cxx="`echo "$try_as_std" | tr -d "0123456789"`"
+    std_version="`echo "$try_as_std" | tr -d "+[a-z]"`"
+fi
 
-if [ "$c_or_cxx" = "CC" ]
+
+###
+if [ -n "$debug_me" ]
+then
+    echo "# using std:   $c_or_cxx$std_version"
+fi
+
+
+## We have now a language mode: c or c++ (anything else) and a version
+
+if [ "$c_or_cxx" = "c" ]
 then
     srcext=".c"
     csmith_set_std=""
-    def_std="-std=c$stdc"
-
+    compiler_set_std="-std=$c_or_cxx$std_version"
 else
-    case "$cplusplus" in 
+    srcext="$cxxext"
+    compiler_set_std="-std=$c_or_cxx$std_version"
+    case "$std_version" in
     "98" | "03" )
         csmith_set_std="--lang-cpp"
         ;;
@@ -221,16 +260,12 @@ else
         csmith_set_std="--lang-cpp --cpp11"
         ;;
     *)
-        echo "c++ version not supported: $cplusplus"
+        echo "c++ version not supported: $std_version"
         exit 1
     esac
-
-    srcext="$cxxext"
-    def_std="-std=gnu++$cplusplus"
 fi
 
-
-COMPILER_FLAGS=" $def_std  $def_opt $def_debug $def_libm $def_warn  -I$CSMITH_INCLUDE "
+COMPILER_FLAGS=" $compiler_set_std  $def_opt $def_debug $def_libm $def_warn  -I$CSMITH_INCLUDE "
 
 # cleanup working directory (default: no cleanup)
 cleanup_dir=""
@@ -248,7 +283,7 @@ then
     cleanup_dir="$RUNTIME_DIR"
 fi
 
-if [ "$c_or_cxx" = "CC" ]
+if [ "$c_or_cxx" = "c" ]
 then
     REFCXX=""
     HOSTCXX=""
@@ -351,6 +386,13 @@ else
 
 fi
 
+
+# A test compiler is always needed
+if [ -z "$TESTCC$TESTCXX" ]
+then
+    echo "No test compiler found"
+    exit 1
+fi
 
 ## parsing command line parameter starts here
 

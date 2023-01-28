@@ -40,12 +40,13 @@
 
 ## Define the reference compiler and related flags in the scriptname
 
- The scriptname can be used to define a reference compiler and related flags. </br>
- After the ".sh" extension was stripped, the remaining dots are used to split additional options </br>
+ The scriptname can be used to define the std mode, a reference compiler and related flags. </br>
+ At the end of the first part (upto the first dot), the underscore can be used to select the std. </br>
+ After the ".sh" extension was stripped, the remaining dots are used to split additional options. </br>
 
  Examples:
  * csmith.tcc.sh
- * csmith.gcc.-m32.sh
+ * csmith_c11.gcc.-m32.sh
  * csmith.clang.--target.x86_64-linux-musl.sh
 
 ## More details
